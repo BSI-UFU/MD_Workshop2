@@ -192,4 +192,3 @@ Sempre que alguém fizer uma pergunta sobre "E se falhar?", responda com: **"Em 
 
 ---
 
-### Quer que eu prepare um "Checklist de Slides" final para você organizar sua apresentação visual?
