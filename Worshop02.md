@@ -152,6 +152,59 @@ Para que este diagrama funcione na prática de alta escala, aplicamos três conc
 
 # BROKE E ACL
 
+
+## 1. O Papel da Camada Broker em Alta Escala
+
+Em cenários de alta escala, o Broker não é apenas um "correio". Ele atua como um **buffer de resiliência** e um **distribuidor de carga**.
+
+### Atributos Técnicos da Camada:
+
+* **Persistência (Log Replay):** Diferente de uma chamada HTTP, o Broker (como Kafka) armazena o evento. Se o consumidor cair, ele pode ler do ponto onde parou.
+* **Backpressure:** Se o *Core Domain* gera 10.000 eventos/segundo e o *Supporting (B)* só aguenta 2.000, o Broker retém o excesso, evitando o "cascateamento de falhas" (o efeito dominó).
+* **Fan-out:** A capacidade de entregar a mesma mensagem para múltiplos interessados com latência mínima.
+
+---
+
+## 2. O Broker pode ser considerado uma ACL?
+
+**Tecnicamente, não.** O Broker é infraestrutura (o "cano"). A **ACL** é um padrão de design de software (a "lógica").
+
+No entanto, no contexto de **Event-Driven Architecture (EDA)**, a confusão é comum porque a ACL é implementada **nas extremidades** do Broker.
+
+### Como a ACL funciona com o Broker:
+
+Uma **Anti-Corruption Layer (Camada Anticorrupção)** serve para impedir que a semântica de um sistema externo "corrompa" o seu modelo de domínio interno.
+
+* **ACL no Produtor (Outbound):** Antes de enviar uma mensagem para o Broker, o seu serviço traduz o seu objeto interno para um **Contrato Público (Schema)**. Isso evita que mudanças internas quebrem os outros.
+* **ACL no Consumidor (Inbound):** Quando o *Supporting (B)* recebe um evento do *Core Domain*, ele passa por uma camada que traduz esse evento para a linguagem que o *Supporting (B)* entende.
+
+> **Exemplo Prático:** Se o sistema *External* (um ERP legado) envia dados com nomes de campos confusos como `CD_CLI_01`, sua ACL no consumidor traduz isso para `CustomerIdentifier` antes de chegar na sua lógica de negócio.
+
+---
+
+## 3. Onde a "Magia" acontece: Schema Registry
+
+Para que o Broker ajude no desacoplamento sem virar um caos, usamos um **Schema Registry**.
+
+1. O **Produtor** consulta o Registry para garantir que o evento segue a regra.
+2. O **Broker** transporta o evento (geralmente em formato binário como Avro ou Protobuf para performance).
+3. O **Consumidor** valida o Schema.
+
+**Isso é a ACL em nível de contrato:** Você garante que ninguém "suje" o barramento com dados malformados.
+
+---
+
+## 4. Resumo da Estrutura (Padrão de Comunicação)
+
+Para o seu workshop, você pode definir a relação assim:
+
+| Componente | Função no Workshop |
+| --- | --- |
+| **Broker** | Infraestrutura de transporte assíncrono e garantia de entrega. |
+| **ACL** | Lógica de tradução que protege o Bounded Context de modelos externos. |
+| **Event Schema** | O "contrato" diplomático entre os contextos que a ACL deve respeitar. |
+
+
 ## Diagrama: O Fluxo da ACL no Mundo de Eventos
 
 ```mermaid
@@ -183,10 +236,9 @@ graph LR
 
 ```
 
-
 ## Detalhamento dos Componentes da ACL
 
-3 pontos vitais do diagrama:
+**3 pontos vitais do diagrama:**
 
 ### 1. O Adaptador (Interface de Entrada)
 
@@ -323,7 +375,58 @@ Ao final dos 20 minutos, apresente esta solução esperada para comparação:
 > 
 > 
 
-**Gostaria que eu gerasse um template de "Resumo Executivo" para os participantes preencherem as respostas deste exercício?**
+---
+
+# 📄 Resumo Executivo: Solução para Alta Escala (Template)
+
+**Nome do Grupo/Participante:** _______________________________________
+**Desafio:** Integração Core Domain (Alta Performance) vs. Legado Fiscal (Baixa Resiliência).
+
+### 1. Identificação da Dinâmica de Fluxo
+
+* **Padrão de Comunicação Adotado:** ( ) Coreografia | ( ) Orquestração
+* **Justificativa:** __________________________________________________________________
+*(Dica: Por que o Core Domain não deve saber que o Fiscal existe?)*
+
+### 2. O Papel do Mediador (Broker)
+
+* **Tecnologia Proposta:** __________________________________________________________
+* **Estratégia de Retenção:** Se o Legado ficar offline por 4 horas, como o Broker deve se comportar?
+* ( ) Descartar mensagens antigas.
+* ( ) Armazenar em disco/log para processamento posterior (Backlog).
+
+
+
+### 3. A Camada de Fronteira (ACL)
+
+* **Responsabilidades da sua ACL (Descreva 2):**
+1. ---
+
+
+2. ---
+
+
+
+
+* **Tradução Semântica:** Como você mapearia o campo `customer_id` do Core para o Legado?
+* `ID_INTERNO` -> `____________________`
+
+
+
+### 4. Garantia de Desacoplamento e Idempotência
+
+* **Problema:** O Broker entregou a mesma mensagem duas vezes para a ACL.
+* **Solução Proposta:** ______________________________________________________________
+*(Dica: Como a ACL pode verificar se aquela Nota Fiscal já foi enviada antes de tentar de novo?)*
 
 ---
 
+## 🏁 Encerramento do Workshop (Últimos 5 min)
+
+Para finalizar, apresente este fechamento focado em **Trade-offs**:
+
+> "Arquitetura Orientada a Eventos não é 'bala de prata'. Ganhamos **escalabilidade infinita** e **isolamento de falhas**, mas pagamos com **complexidade de rastreabilidade**. O sucesso não está em usar a ferramenta mais cara, mas em garantir que o seu **Domínio** nunca seja corrompido pela lentidão ou pela semântica de sistemas externos."
+
+---
+
+**Gostaria que eu formatasse este workshop completo em um documento PDF ou Markdown estruturado para você distribuir aos participantes?**
