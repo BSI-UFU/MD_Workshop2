@@ -210,3 +210,120 @@ Uma vez que o dado passa pela ACL, ele entra no **Broker** seguindo um contrato 
 Como vimos, o **Broker é o canal de transporte seguro**, mas a **ACL é o "filtro"** que garante que apenas informações úteis e bem formatadas entrem nesse canal. Sem a ACL, seu Broker vira um "pântano de dados" (Data Swamp).
 
 ---
+
+# DESAFIO BLACK FRIDAY
+
+
+```mermaid
+graph LR
+    %% Definição dos Contextos
+    subgraph Core_Domain [Core Domain: Gestão de Pedidos]
+        OrderApp[Serviço de Pedidos]
+    end
+
+    subgraph Messaging [Camada de Mensageria: O Mediador]
+        Broker{Event Broker / Kafka}
+        Registry[Schema Registry]
+    end
+
+    subgraph Supporting [Supporting Context]
+        Stock[Serviço de Estoque]
+    end
+
+    subgraph Legacy_Protection [Camada de Fronteira]
+        ACL[Anti-Corruption Layer / Worker]
+    end
+
+    subgraph External [External Context: Legado Fiscal]
+        FiscalDB[(DB Legado)]
+    end
+
+    %% Fluxo de Dados e Dinâmica
+    OrderApp -- "1. Publica 'OrderPlaced' (Alta Escala)" --> Broker
+    Broker -. "Valida Contrato" .-> Registry
+
+    %% Consumo Desacoplado
+    Broker -- "2a. Consumo em Tempo Real" --> Stock
+    
+    %% Fluxo com ACL e Throttling
+    Broker -- "2b. Consumo Assíncrono" --> ACL
+    ACL -- "3. Tradução Semântica & Throttling (Carga Controlada)" --> FiscalDB
+
+    %% Estilização para clareza
+    style Broker fill:#f96,stroke:#333,stroke-width:2px
+    style ACL fill:#bbf,stroke:#333,stroke-width:2px
+    style OrderApp fill:#dfd
+    style FiscalDB fill:#ffd
+
+```
+
+### 🧠 Guia de Leitura para os Participantes:
+
+1. **O Mediador (Broker):** Funciona como o amortecedor. Ele aceita 10k pedidos por segundo do **Core Domain**, mesmo que os outros sistemas sejam lentos.
+2. **A Dinâmica de Fluxo:** * O **Estoque** consome as mensagens rapidamente (escala paralela ao Core).
+* A **ACL** consome as mesmas mensagens, mas atua como um "redutor de velocidade" (Throttling) para não derrubar o **Legado Fiscal**.
+
+3. **A ACL em Ação:** Observe que ela é a única que "toca" o sistema legado. Ela traduz os dados modernos do seu sistema para o formato esperado pelo banco de dados antigo (ex: convertendo JSON para a estrutura de campos em latim).
+
+Este exercício foi desenhado para ser a "prova de fogo" do workshop. Ele força os participantes a saírem da teoria e tomarem decisões arquiteturais reais de **alta escala**, focando em como o **Broker** e a **ACL** protegem o domínio.
+
+---
+
+## 🕒 Exercício Prático: O Desafio da Black Friday (20 min)
+
+### O Cenário
+
+A empresa **"Global-Log"** possui um sistema de **Gestão de Pedidos (Core Domain)**. Durante a Black Friday, o volume de vendas aumenta 50x. Atualmente, o sistema de pedidos tenta avisar o **Sistema de Notas Fiscais (Externo/Legado)** via API síncrona, mas o Legado trava com o volume, derrubando as vendas.
+
+### O Material de Partida
+
+Os participantes recebem o seguinte mapeamento de contexto simplificado:
+
+1. **Core Domain (Pedidos):** Gera 10k eventos/seg. Não pode esperar ninguém.
+2. **External Context (Legado Fiscal):** Só aguenta 100 requisições/seg. Usa nomes de campos em latim (ex: `id_venditio`).
+3. **Supporting Context (Estoque):** Precisa saber das vendas para baixar o inventário.
+
+
+### A Tarefa (Trabalho em Grupo ou Individual)
+
+Os participantes devem desenhar (em papel ou ferramenta digital) e justificar:
+
+#### 1. Propor o Mediador (5 min)
+
+* Qual tecnologia/padrão de **Broker** escolheriam para suportar esse "buffer" de mensagens?
+* Como garantir que o **Core Domain** não fique travado esperando o **Legado**?
+
+#### 2. Desenhar a Dinâmica do Fluxo e ACL (10 min)
+
+* Onde exatamente você colocaria a **ACL** (Anti-Corruption Layer)?
+* Desenhe o fluxo da mensagem desde a criação do pedido até a chegada no Legado, indicando a transformação dos dados (Tradução).
+* Como o **Estoque** se encaixa nesse fluxo sem acoplar com o **Legado**?
+
+#### 3. Definir a Estratégia de Escala (5 min)
+
+* Se o **Legado** cair por 2 horas, o que acontece com as mensagens no Broker?
+* Como evitar que o **Legado** processe a mesma nota fiscal duas vezes (Idempotência)?
+
+
+## 📝 Guia de Resolução (Para o Facilitador)
+
+Ao final dos 20 minutos, apresente esta solução esperada para comparação:
+
+* **O Mediador:** Um Broker com suporte a **Backpressure** (ex: Kafka ou RabbitMQ com filas persistentes). O Core publica e esquece.
+* **A ACL:** Deve ficar na frente do **Legado**. Ela consome do Broker, traduz os nomes dos campos (de `OrderID` para `id_venditio`) e faz o "Throttling" (entrega as mensagens devagar, no ritmo que o legado aguenta).
+* **O Fluxo:** * `Pedido` -> `Broker` (Evento: `OrderPlaced`)
+* `Broker` -> `Estoque` (Consome em tempo real)
+* `Broker` -> `ACL` -> `Legado Fiscal` (Consome de forma controlada/lenta)
+
+### Checklist de Avaliação para os Participantes
+
+> * [ ] O Core Domain ficou livre de chamadas HTTP externas?
+> * [ ] O Legado está protegido por uma camada de tradução (ACL)?
+> * [ ] O sistema aguenta a queda de um dos componentes sem perder dados?
+> 
+> 
+
+**Gostaria que eu gerasse um template de "Resumo Executivo" para os participantes preencherem as respostas deste exercício?**
+
+---
+
