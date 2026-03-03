@@ -1,93 +1,21 @@
 # WORKSHOP: Arquitetura Orientada a Eventos em Cenários de Alta Escala: Uma Análise de Padrões de Comunicação e Desacoplamento
 
 
-Este workshop foi desenhado para ser intensivo, prático e focado na transição de um design estratégico (DDD) para uma implementação técnica escalável utilizando **Event-Driven Architecture (EDA)**.
-
----
-
-## ⏱️ Cronograma do Workshop (50 min)
-
-| Tempo | Atividade | Foco |
-| --- | --- | --- |
-| **00-10 min** | Alinhamento Estratégico | Do Context Map aos Eventos de Domínio. |
-| **10-25 min** | Padrões de Comunicação | Choreography vs. Orchestration e Event Delivery. |
-| **25-45 min** | Mão na Massa (Prática) | Estrutura de pastas, idempotência e desacoplamento. |
-| **45-50 min** | Q&A e Conclusão | Trade-offs e próximos passos. |
-
----
-
-## 1. O Ponto de Partida: Context Mapping (10 min)
-
-Para este cenário, assumimos um sistema de **E-commerce Global**. O mapeamento de contextos (Bounded Contexts) já foi definido para garantir que cada serviço possua sua própria linguagem ubíqua e limites de dados claros.
-
-### Por que Eventos aqui?
-
-Em alta escala, a comunicação síncrona (HTTP/REST) entre esses contextos cria um "acoplamento temporal". Se o serviço de *Pagamento* cai, o *Pedido* falha. Com eventos, o **Pedido** apenas publica `OrderPlaced` e segue sua vida.
-
----
-
-## 2. Padrões de Comunicação e Desacoplamento (15 min)
-
-### Coreografia vs. Orquestração
-
-* **Coreografia:** Cada serviço sabe o que fazer quando ouve um evento. É o ápice do desacoplamento, ideal para alta escala.
-* **Orquestração:** Um "maestro" central coordena as chamadas. Útil em fluxos de compensação complexos (Sagas), mas pode virar um gargalo.
-
-### Garantias de Entrega e Idempotência
-
-Em cenários de alta escala, "exatamente uma entrega" é um mito caro. Trabalhamos com **At-least-once delivery**.
-
-* **Desafio:** O consumidor pode receber o mesmo evento duas vezes.
-* **Solução:** Implementar o padrão **Idempotent Consumer** e **Outbox Pattern** para garantir que o banco de dados e a mensagem estejam em sincronia.
-
----
-
-## 3. Estrutura de Projeto e Implementação (20 min)
-
-Para manter o desacoplamento dentro do código, utilizamos uma arquitetura limpa (Clean/Hexagonal) onde os eventos são cidadãos de primeira classe.
-
-### Estrutura de Pastas Sugerida
-
-```text
-src/
-└── Modules/
-    └── Ordering/
-        ├── Domain/
-        │   ├── Events/          # Definição dos Eventos (ex: OrderCreated.ts)
-        │   ├── Entities/
-        │   └── Services/
-        ├── Application/
-        │   ├── Commands/        # Orquestra a lógica de negócio
-        │   └── EventHandlers/   # Reage a eventos de outros contextos
-        └── Infrastructure/
-            ├── Messaging/       # Implementação (Kafka, RabbitMQ, SNS/SQS)
-            │   ├── Publishers/
-            │   └── Consumers/
-            └── Persistence/     # Repositórios e Outbox
-
-```
-
-### Prática: O Fluxo do Evento
-
-1. **Domain Event:** Ocorre uma mudança de estado na Entidade.
-2. **Outbox:** O evento é salvo na mesma transação do banco de dados.
-3. **Relay/Publisher:** Um processo separado lê o Outbox e publica no Broker (ex: Kafka).
-4. **Subscriber:** O serviço de *Estoque* ou *Logística* consome o evento de forma assíncrona.
-
----
-
-## 4. Análise de Trade-offs (5 min)
-
-* **Prós:** Escalabilidade horizontal massiva, resiliência a falhas parciais, evolução independente de serviços.
-* **Contras:** Consistência eventual (o dado demora milisegundos para propagar), depuração mais complexa (rastreabilidade via *Correlation IDs* é obrigatória).
-
----
-
-### Conclusão e Próximo Passo
-
-O desacoplamento real não vem apenas de "usar um broker", mas de garantir que os contextos não compartilhem esquemas de banco de dados e que a lógica de negócio seja resiliente a duplicidade de mensagens.
-
-**Gostaria que eu detalhasse a implementação de um "Idempotent Consumer" em uma linguagem específica (Node.js, Java ou Go) para este cenário?**
+⏱️ Workshop: EDA em Alta Escala (50 min)1. Ponto de Partida: Context Mapping (10 min)Utilizando a imagem fornecida como referência, traduzimos os domínios para um fluxo de eventos. O segredo da alta escala é o Desacoplamento Temporal: o emissor não espera o receptor.Mapeamento de Fluxo:Core Domain: Emite eventos vitais (ex: OrderPlaced).Supporting (A): Reage para processar pagamentos ou validações.Generic Subdomain: Cuida de tarefas transversais como Notificações ou Logs.External Context: Sistemas legados ou APIs de terceiros que consomem dados via Webhooks/Adapters.2. Análise de Padrões de Comunicação (15 min)Para escalar, analisamos dois modelos principais de interação entre esses contextos:PadrãoFuncionamentoNível de DesacoplamentoCoreografiaCada serviço observa o Broker e decide sua ação.Máximo. Não há ponto central de falha lógica.OrquestraçãoUm serviço central (Saga) comanda: "Execute A, depois B".Médio. Facilita a visão do processo, mas cria dependência do orquestrador.O Desafio da Alta Escala: IdempotênciaEm sistemas distribuídos, a rede falha. O padrão At-least-once delivery garante que a mensagem chegue, mas ela pode chegar repetida.Solução: O consumidor deve verificar se o ID da mensagem já foi processado antes de alterar o estado do banco.3. Prática: Estrutura de Pastas e Implementação (20 min)Para evitar que o código se torne um "Big Ball of Mud", a estrutura de pastas deve refletir o isolamento do Bounded Context e a infraestrutura de eventos.Estrutura de Pastas Sugerida:Plaintext/src
+  /modules
+    /sales-context (Core Domain)
+      /domain
+        /events        <-- Definição pura do evento (JSON Schema)
+        /entities
+      /application
+        /handlers      <-- Lógica que dispara o evento
+      /infrastructure
+        /messaging     <-- Implementação (Kafka/RabbitMQ/AWS SNS)
+        /outbox        <-- Persistência para garantir entrega (Outbox Pattern)
+    /payment-context (Supporting A)
+      /application
+        /subscribers   <-- Escuta eventos do Sales Context
+4. Conclusão e Trade-offs (5 min)Vantagem: Escalabilidade elástica. Se o Supporting (A) estiver lento, as mensagens acumulam no Broker sem derrubar o Core Domain.Custo: Consistência Eventual. O dado no Generic Subdomain pode estar alguns milissegundos (ou segundos) atrás do Core.
 
 ---
 
@@ -95,30 +23,31 @@ O desacoplamento real não vem apenas de "usar um broker", mas de garantir que o
 
 ```mermaid
 graph TD
-    %% Baseado no Core Domain da imagem
-    Core
+    %% Baseado no Core Domain da imagem fornecida
+    Core[Bounded Context: Core Domain]
 
-    %% Baseado no Supporting Subdomain (A) da imagem
-    SuppA
+    %% Baseado no Supporting Subdomain (A) da imagem fornecida
+    SuppA[Bounded Context: Supporting A]
 
-    %% Baseado no Supporting Subdomain (B) da imagem
-    SuppB
+    %% Baseado no Supporting Subdomain (B) da imagem fornecida
+    SuppB[Bounded Context: Supporting B]
 
-    %% Baseado no Generic Subdomain da imagem
-    Generic
+    %% Baseado no Generic Subdomain da imagem fornecida
+    Generic[Bounded Context: Generic]
 
-    %% Baseado no Bounded Context (External) da imagem
-    External
+    %% Baseado no Bounded Context (External) da imagem fornecida
+    External[Bounded Context: External]
 
-    %% O Broker de Mensagens é a chave para a escala
-    Broker{cite: Event Broker (Message Bus)}
+    %% O Broker de Mensagens é a chave para a escala e desacoplamento
+    Broker{Event Broker Message Bus}
 
-    %% Fluxo de Publicação e Assinatura
-    Core -- cite: Publica 'PedidoCriado' --> Broker
-    SuppA -- cite: Publica 'PagamentoConfirmado' --> Broker
-    Generic -- cite: Publica 'LogAlterado' --> Broker
+    %% Fluxo de Publicação (Contexto emite para o Broker)
+    Core -- Publica Evento 'PedidoCriado' --> Broker
+    SuppA -- Publica Evento 'PagamentoConfirmado' --> Broker
+    Generic -- Publica Evento 'NotificacaoEnviada' --> Broker
 
-    Broker -- cite: Assina/Consome --> SuppB
-    Broker -- cite: Assina/Consome --> External
-    Broker -- cite: Assina/Consome --> SuppA
+    %% Fluxo de Assinatura/Consumo (Contexto reage ao Broker)
+    Broker -- Assina/Consome --> SuppB
+    Broker -- Assina/Consome --> External
+    Broker -- Assina/Consome --> SuppA
 ```
