@@ -1,38 +1,38 @@
 ```mermaid
-graph TD
-    subgraph "DOMÍNIO DE E-COMMERCE"
-        
-        %% Core Domain
-        subgraph "CORE DOMAIN (Onde o lucro acontece)"
-            CATALOGO["<b>Bounded Context: Catálogo</b><br/>(Nosso Microatômico)"]
+graph LR
+    %% Definição de Estilos
+    classDef core fill:#ff99cc,stroke:#333,stroke-width:4px,color:#000
+    classDef support fill:#cce5ff,stroke:#333,stroke-width:2px,color:#000
+    classDef generic fill:#e2e2e2,stroke:#333,stroke-dasharray: 5 5,color:#000
+
+    subgraph ECOMMERCE_SYSTEM [MAPA DE CONTEXTO ESTRATÉGICO]
+        direction TB
+
+        %% Detalhando o Core Domain com foco no Microatômico
+        subgraph CORE [CORE: Diferencial Competitivo]
+            CATALOGO["<b>BC: CATÁLOGO (Microatômico)</b><hr/>- Gestão de Preços<br/>- Atributos de Produtos<br/>- Categorização"]
         end
 
-        %% Supporting Subdomains
-        subgraph "SUPPORTING SUBDOMAIN A (Logística)"
-            ESTOQUE["<b>Bounded Context: Estoque</b><br/>(Gestão de SKUs)"]
+        %% Detalhando os Subdomínios de Suporte
+        subgraph SUPPORT [SUPPORT: Operação Logística]
+            ESTOQUE["<b>BC: ESTOQUE</b><hr/>- Saldo de Itens<br/>- Localização no Armazém"]
+            LOYALTY["<b>BC: FIDELIDADE</b><hr/>- Cálculo de Pontos<br/>- Cashback"]
         end
 
-        subgraph "SUPPORTING SUBDOMAIN B (Fidelidade)"
-            LOYALTY["<b>Bounded Context: Loyalty</b>"]
+        %% Detalhando o Domínio Genérico
+        subgraph GENERIC [GENERIC: Commodities]
+            PAGAMENTO["<b>BC: PAGAMENTO</b><hr/>- Integração Gateway<br/>- Estorno / Conciliação"]
         end
-
-        %% Generic Subdomain
-        subgraph "GENERIC SUBDOMAIN (Commodity)"
-            PAGAMENTO["<b>Bounded Context: Pagamento</b><br/>(Gateway Externo/Stripe)"]
-        end
-
-        %% External Context
-        EXT_NOTIF["<b>Bounded Context: Notificações</b><br/>(Externo/AWS SES)"]
     end
 
-    %% Relacionamentos (Context Mapping)
-    CATALOGO -- "Upstream (OHS)" --> ESTOQUE
-    ESTOQUE -- "Downstream (ACL)" --> CATALOGO
-    CATALOGO -- "Published Language (Events)" --> LOYALTY
-    PAGAMENTO -.-> CATALOGO
-    LOYALTY -- "Uses" --> EXT_NOTIF
-
-    style CATALOGO fill:#f9f,stroke:#333,stroke-width:4px
-    style ESTOQUE fill:#bbf,stroke:#333
-    style PAGAMENTO fill:#dfd,stroke:#333
+    %% Relacionamentos com labels claras que não obstruem os nomes
+    CATALOGO ====>|"(OHS) Fornece Dados"| ESTOQUE
+    ESTOQUE ---->|"(ACL) Traduz Legado"| CATALOGO
+    CATALOGO -.->|"(Events) Notifica Preço"| LOYALTY
+    PAGAMENTO --- CATALOGO
+    
+    %% Aplicação dos Estilos
+    class CATALOGO core
+    class ESTOQUE,LOYALTY support
+    class PAGAMENTO generic
 ```
