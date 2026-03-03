@@ -1,8 +1,8 @@
 ```mermaid
 graph LR
     %% Definição de Estilos
-    classDef core fill:#ff99cc,stroke:#333,stroke-width:4px,color:#000
-    classDef support fill:#cce5ff,stroke:#333,stroke-width:2px,color:#000
+    classDef core fill:#ff99cc,stroke:#333,stroke-width:6px,color:#000
+    classDef support fill:#cce5ff,stroke:#333,stroke-width:6px,color:#000
     classDef generic fill:#e2e2e2,stroke:#333,stroke-dasharray: 5 5,color:#000
 
     subgraph ECOMMERCE_SYSTEM [MAPA DE CONTEXTO ESTRATÉGICO]
