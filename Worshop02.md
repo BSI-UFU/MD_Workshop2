@@ -429,4 +429,4 @@ Para finalizar, apresente este fechamento focado em **Trade-offs**:
 
 ---
 
-**Gostaria que eu formatasse este workshop completo em um documento PDF ou Markdown estruturado para você distribuir aos participantes?**
+
